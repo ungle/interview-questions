@@ -14,7 +14,7 @@ layout:
 
 # 2023.6.28 面试
 
-## Redis八股
+Redis八股
 
 ### 一致性哈希的原理
 
@@ -66,7 +66,15 @@ Redis Cluster 中的每个 Redis 实例监听两个 TCP 端口，6379（默认�
 
 ### kafka和rabbitmq的区别
 
-![image](https://github.com/ungle/interview-questions/assets/34132413/5ab6f2d0-462e-43c7-9e30-de69390c1447) ![image](https://github.com/ungle/interview-questions/assets/34132413/37d3041e-dc1d-47f3-9a21-2f7aab60415b) ![image](https://github.com/ungle/interview-questions/assets/34132413/8fb5692d-6dcd-49d2-8d4a-5ca259755248)
+
+
+![](<.gitbook/assets/image (2).png>)
+
+![](.gitbook/assets/image.png)
+
+![](<.gitbook/assets/image (1).png>)
+
+![](https://github.com/ungle/interview-questions/assets/34132413/5ab6f2d0-462e-43c7-9e30-de69390c1447) ![](https://github.com/ungle/interview-questions/assets/34132413/37d3041e-dc1d-47f3-9a21-2f7aab60415b) ![](https://github.com/ungle/interview-questions/assets/34132413/8fb5692d-6dcd-49d2-8d4a-5ca259755248)
 
 ### kafka为什么性能这么高
 
