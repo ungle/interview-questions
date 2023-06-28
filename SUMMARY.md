@@ -2,10 +2,9 @@
 
 * [2023.6.28 面试](README.md)
 * [interview-questions](<README (1).md>)
-* [Dubbo面试题](dubbo-mian-shi-ti.md)
 * [Java并发](java-bing-fa/README.md)
-  * [Java多线程面试 基础](java-bing-fa/java-duo-xian-cheng-mian-shi-ji-chu.md)
   * [AQS](java-bing-fa/aqs.md)
+  * [Java多线程面试 基础](java-bing-fa/java-duo-xian-cheng-mian-shi-ji-chu.md)
   * [Java多线程总结版](java-bing-fa/java-duo-xian-cheng-zong-jie-ban.md)
   * [进程通信和线程通信的方式](java-bing-fa/jin-cheng-tong-xin-he-xian-cheng-tong-xin-de-fang-shi.md)
   * [如何设计线程池](java-bing-fa/ru-he-she-ji-xian-cheng-chi.md)
@@ -38,3 +37,4 @@
   * [计算机网络上](ji-suan-ji-wang-luo/ji-suan-ji-wang-luo-shang.md)
   * [计算机网络下](ji-suan-ji-wang-luo/ji-suan-ji-wang-luo-xia.md)
 * [Netty](netty.md)
+* [Dubbo面试题](dubbo-mian-shi-ti.md)
