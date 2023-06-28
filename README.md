@@ -1,184 +1,83 @@
-# interview-questions
+---
+layout:
+  title:
+    visible: true
+  description:
+    visible: true
+  tableOfContents:
+    visible: true
+  outline:
+    visible: true
+  pagination:
+    visible: false
+---
 
-## 2023.2.5 Toppan Ecquaria
+# 2023.6.28 面试
 
-### GET 和 POST的区别是什么
-- GET不能带报文，POST可以
-- 都可以和服务器通讯，基于tcp
-- GET幂等，post非幂等
+## Redis八股
 
-|HTTP方法名称	 |是否幂等 |是否安全|
-|--|--|--|
-|OPTIONS	 |Y |	Y|
-|HEAD	 |Y |	Y|
-|GET	 |Y	 |Y|
-|PUT	 |Y	 |N|
-|DELETE	 |Y	 |N|
-|POST	 |N	 |N|
-|PATCH	 |N	 |N|
+### 一致性哈希的原理
 
+首先对节点进行哈希计算，哈希值通常在 2^32-1 范围内。然后将 2^32-1 这个区间首尾连接抽象成一个环并将节点的哈希值映射到环上，当我们要查询 key 的目标节点时，同样的我们对 key 进行哈希计算，然后顺时针查找到的第一个节点就是目标节点。 这样就完了吗？还没有，试想一下假如环上的节点数量非常少，那么非常有可能造成数据分布不平衡，本质上是环上的区间分布粒度太粗。
 
-### JSP的隐式对象
+怎么解决呢？不是粒度太粗吗？那就加入更多的节点，这就引出了一致性哈希的虚拟节点概念，虚拟节点的作用在于让环上的节点区间分布粒度变细。
 
-request：获取客户端请求信息，主要用于接受http协议传送到服务器的数据  常用
+一个真实节点对应多个虚拟节点，将虚拟节点的哈希值映射到环上，查询 key 的目标节点我们先查询虚拟节点再找到真实节点即可。
 
-response：代表客户端的响应，主要用于将jsp容器处理过的对象传送到客户端 
+### rdb和aop的分别
 
-pageContext：页面的上下文对象，可以从中获取到当前页面的其他信息，可以从中获取到其他8个隐含对象。常用
+一、RDB 的优点
 
-session：代表浏览器的一次回话。常用
+* 体积更小：相同的数据量 RDB 数据比 AOF 的小，因为 RDB 是紧凑型文件。
+* 恢复更快：因为 RDB 是数据的快照，基本上就是数据的复制，不用重新读取再写入内存。
+* 性能更高：父进程在保存 RDB 时候只需要fork一个子进程，无需父进程的进行其他io操作，也保证了服务器的性能。
 
-application：代表当前的web应用类似于一个全局变量
+二、RDB 的缺点
 
-config：可以获取服务器的配置信息
+* 故障丢失：因为 RDB 是全量的，我们一般是使用shell脚本实现30分钟或者1小时或者每天对 Redis 进行 RDB 备份，（注，也可以是用自带的策略），但是最少也要5分钟进行一次的备份，所以当服务死掉后，最少也要丢失5分钟的数据。
+* 耐久性差：相对 AOF 的异步策略来说，因为 RDB 的复制是全量的，即使是 fork 的子进程来进行备份，当数据量很大的时候对磁盘的消耗也是不可忽视的，尤其在访问量很高的时候，主线程 fork 的时间也会延长，导致 cpu 吃紧，耐久性相对较差。
 
-out：输出对象，可以把字符型打印到浏览器
+三、AOF 的优点
 
-page：指的是当前jsp对应的servlet对象的引用
+* 数据保证：我们可以设置fsync策略，一般默认是 Everysec，也可以设置每次写入追加，所以即使服务死掉了，也最多丢失一秒数据
+* 自动缩小：当 AOF 文件大小到达一定程度的时候，后台会自动的去执行 AOF 重写，此过程不会影响主进程，重写完成后，新的写入将会写到新的 AOF 中，旧的就会被删除掉。但是此条如果拿出来对比 RDB 的话还是没有必要算成优点，只是官网显示成优点而已。
 
-Exception：用来处理jsp文件在执行时所产生的错误和异常
+四、AOF 的缺点
 
+* 性能相对较差：它的操作模式决定了它会对 Redis 的性能有所损耗。（主线程写文档） 体积相对更大：尽管是将 AOF 文件重写了，但是毕竟是操作过程和操作结果仍然有很大的差别，体积也毋庸置疑的更大。
+* 恢复速度更慢：AOF 在过去曾经发生过这样的 bug ： 因为个别命令的原因，导致 AOF 文件在重新载入时，无法将数据集恢复成保存时的原样。 测试套件里为这种情况添加了测试： 它们会自动生成随机的、复杂的数据集， 并通过重新载入这些数据来确保一切正常。 虽然这种 bug 在 AOF 文件中并不常见， 但是对比来说， RDB 几乎是不可能出现这种 bug 的。
 
-### 数组寻找第一第二大的数字
+五、RDB 和 AOF 的混合模式
 
-``` java
-int max = Integer.MIN_VALUE;
-int second = Integer.MIN_VALUE;
-for(int i : arr){
-  if(i > max){
-    second = max;
-    max =i;
-  }
-  if(i >= second && i < max){
-     second = i;
-  }
-}
-return max+second;
-```
+在两次快照中间使用日志，第二次快照完成之后日志就可以清除以便下次使用，这样不会存在 AOF 文件过大的问题。
 
-### 数组去重,不许用java.util.*
+### redis 集群间一致性
 
-``` java
+Gossip 算法如其名，在办公室，只要一个人八卦一下，在有限的时间内所有的人都会知道该八卦的信息，这种方式也与病毒传播类似，因此 Gossip 有众多的别名，如“闲话算法”、“疫情传播算法”、“病毒感染算法”、“谣言传播算法”。但 Gossip 并不是一个新东西，之前的泛洪查找、路由算法都归属于这个范畴，不同的是 Gossip 给这类算法提供了明确的语义、具体实施方法及收敛性证明。
 
-		boolean dup = false;
-		int counter = 0;
-		int[] resarr = new int[arr.length];
-		for (int i = 0; i < arr.length; i++) {
-			dup = false;
+Redis Cluster 中的每个 Redis 实例监听两个 TCP 端口，6379（默认）用于服务客户端查询，16379（默认服务端口+10000）用于集群内部通信。集群中节点通信方式如下：
 
-			for (int j = 0; j < arr.length; j++) {
-				if (arr[i] == arr[j] && i != j) {
-					dup = true;
-					break;
-				}
-			}
+* 每个节点在固定周期内通过特定规则选择几个节点发送 Ping 消息；
+* 接收到 Ping 消息的节点用 Pong 消息作为响应。
 
-			if (!dup) {
-				resarr[counter] = arr[i];
-				counter++;
-			}
+集群中每个节点通过一定规则挑选要通信的节点，每个节点可能知道全部节点，也可能仅知道部分节点，只要这些节点彼此可以正常通信，最终它们会达到一致的状态。当节点故障、新节点加入、主从关系变化、槽信息变更等事件发生时，通过不断的 Ping/Pong 消息通信，经过一段时间后所有的节点都会知道集群全部节点的最新状态，从而达到集群状态同步的目的。
 
-		}
+## kafka八股
 
-		int[] res = new int[counter];
-		for (int i = 0; i < counter; i++) {
-			res[i] = resarr[i];
-		}
-    
-    return res;
+### kafka和rabbitmq的区别
 
-```
+![image](https://github.com/ungle/interview-questions/assets/34132413/5ab6f2d0-462e-43c7-9e30-de69390c1447) ![image](https://github.com/ungle/interview-questions/assets/34132413/37d3041e-dc1d-47f3-9a21-2f7aab60415b) ![image](https://github.com/ungle/interview-questions/assets/34132413/8fb5692d-6dcd-49d2-8d4a-5ca259755248)
 
+### kafka为什么性能这么高
 
-## 2023.2.13 Nextlab
-
-### Java的访问级别有哪些
-
-- public--都可访问(公有)
-- protected--包内和子类可访问（保护）
-- 不写(default)--包内可访问 （默认）
-- private--类内可访问（私有）
-
-### Rest哪些操作是幂等(Idempotent)的
-
-- GET
-- PUT
-- DELETE
-- HEAD
-- OPTIONS
-
-
-### @Controller 和 @RestController 的区别
-
-@RestController注解等价于@ResponseBody ＋ @Controller。@RestController和@Controller的共同点是都用来表示Spring某个类是否可以接收HTTP请求，
-二者区别： @RestController无法返回指定页面，而@Controller可以；前者可以直接返回数据，后者需要@ResponseBody辅助。
-
-
-### spring依赖注入是什么，由什么组件负责的？
-
-在依赖注入中，您不必创建对象，但必须描述如何创建它们。您不是直接在代码中将组件和服务连接在一起，而是描述配置文件中哪些组件需要哪些服务。由 IoC 容器将它们装配在一起。
-组件是什么？
-
-### 面向对象四特性
-- Abstraction 抽象 抽象就是忽略关注主题与当前目标无关的信息，以便更关注于与当前目标有关的信息。抽象并不打算了解全部问题，而只关注于主题相关性较大的部分，且暂时不用关注部分细节。
-- Encapsulation 封装 即隐藏对象的属性和实现细节，仅对外公开接口，控制在程序中属性的读和修改的访问级别。
-- Inheritance 继承 继承，即子类继承父类的特征和行为，使得子类对象（实例）具有父类的实例域和方法，或子类从父类继承方法，使得子类具有父类相同的行为。
-- Polymorphism 多态 即同一个行为具有多个不同表现形式或形态的能力。表现形式为，子类重写父类方法，实现类实现接口方法，子类重写抽象类方法。
-
-
-### final对象可以怎么初始化，static final对象可以怎么初始化？
-- *final对象* 可以通过构造方法初始化
-- *static final 对象初始化*  通过static 方法， 通过变量直接声明，通过static代码块
-
-### Runnable 和 Thread 的区别
-
-多线程可以通过两种方式来创建。
-
-- 通过继承Thread类
-
-- 通过实现Runnable接口
-
-就是接口和类的区别：
-
-1. Runnable的实现方式是实现其接口即可
-2. Thread的实现方式是继承其类
-3. Runnable接口支持多继承，但基本上用不到
-4. Thread实现了Runnable接口并进行了扩展，而Thread和Runnable的实质是实现的关系，不是同类东西，所以Runnable或Thread本身没有可比性。
-
-### 什么时候用runnable好呢
-
-只想要实现run行为的时候
-
-
-### String不可变性
-
-- 不变性：String 是只读字符串，是一个典型的 immutable 对象，对它进行任何操作，其实都是创建一个新的对象，再把引用指向该对象。不变模式的主要作用在于当一个对象需要被多线程共享并频繁访问时，可以保证数据的一致性；
-
-- 常量池优化：String 对象创建之后，会在字符串常量池中进行缓存，如果下次创建同样的对象时，会直接返回缓存的引用；
-
-- final：使用 final 来定义 String 类，表示 String 类不能被继承，提高了系统的安全性。
-
-
-### 受检异常和非受检异常
-
-在异常处理的时候，都会接触到受检异常（checked exception）和非受检异常（unchecked exception）这两种异常类型。
- 非受检异常指的是java.lang.RuntimeException和java.lang.Error类及其子类，所有其他的异常类都称为受检异常。两种类型的异常在作用上并没有差别。
-
-两者的区别主要在：受检的异常是由编译器强制执行的,必须捕获，用于指示不受程序控制的异常情况（例如，I/O 错误），而非受检的异常在运行时发生，用于指示编程错误（例如，空指针。正因为如此，受检异常在使用的时候需要比非受检异常更多的代码来避免编译错误。
-
-|uncheckedExcepiton(RuntimeException) |CheckedException|
-|--|--|
-|Java.lang.ArithmeticException  　 　Java.lang.ArrayStoreExcetpion  　　Java.lang.ClassCastException  　　Java.lang.EnumConstantNotPresentException  　　Java.lang.IllegalArgumentException  　　Java.lang.IllegalThreadStateException  　　Java.lang.NumberFormatException  　　Java.lang.IllegalMonitorStateException  　　Java.lang.IllegalStateException  　　Java.lang.IndexOutOfBoundsException  　　Java.lang.ArrayIndexOutOfBoundsException  　　Java.lang.StringIndexOutOfBoundsException  　　Java.lang.NegativeArraySizeException’  　　Java.lang.NullPointerException  　　Java.lang.SecurityException  　　Java.lang.TypeNotPresentException  　　Java.lang.UnsupprotedOperationException| Java.lang.ClassNotFoundException  　　Java.lang.CloneNotSupportedException  　　Java.lang.IllegalAccessException  　　Java.lang.InterruptedException  　　Java.lang.NoSuchFieldException  　　Java.lang.NoSuchMetodException|
-
-
-### Arraylist 和 linkedlist 的区别和各自优势
-
-- 是否保证线程安全： ArrayList 和 LinkedList 都是不同步的，也就是不保证线程安全；
-- 底层数据结构： Arraylist 底层使用的是Object数组；LinkedList 底层使用的是双向循环链表数据结构；
-- 插入和删除是否受元素位置的影响： ArrayList 采用数组存储，所以插入和删除元素的时间复杂度受元素位置的影响。 比如：执行add(E e)方法的时候， ArrayList 会默认在将指定的元素追加到此列表的末尾，这种情况时间复杂度就是O(1)。但是如果要在指定位置 i 插入和删除元素的话（add(int index, E element)）时间复杂度就为 O(n-i)。因为在进行上述操作的时候集合中第 i 和第 i 个元素之后的(n-i)个元素都要执行向后位/向前移一位的操作。 LinkedList 采用链表存储，所以插入，删除元素时间复杂度不受元素位置的影响，都是近似 O（1）而数组为近似 O（n）。
-- 是否支持快速随机访问： LinkedList 不支持高效的随机元素访问，而ArrayList 实现了RandomAccess 接口，所以有随机访问功能。快速随机访问就是通过元素的序号快速获取元素对象(对应于get(int index)方法)。
-- 内存空间占用： ArrayList的空 间浪费主要体现在在list列表的结尾会预留一定的容量空间，而LinkedList的空间花费则体现在它的每一个元素都需要消耗比ArrayList更多的空间（因为要存放直接后继和直接前驱以及数据）。
-
-
-
-
+* Cache Filesystem Cache PageCache缓存
+* 顺序写：由于现代的操作系统提供了预读和写技术，磁盘的顺序写大多数情况下比随机写内存还要快。
+  * 即使是普通的机械磁盘，顺序访问速率也接近了内存的随机访问速率。
+  * Kafka的每条消息都是append的，不会从中间写入和删除消息，保证了磁盘的顺序访问。
+* Zero-copy：零拷技术减少拷贝次数
+  * Linux 2.4+内核通过sendfile系统调用，提供了零拷贝。数据通过DMA拷贝到内核态Buffer后，直接通过DMA拷贝到NIC Buffer，无需CPU拷贝。这也是零拷贝这一说法的来源。除了减少数据拷贝外，因为整个读文件-网络发送由一个sendfile调用完成，整个过程只有两次上下文切换，因此大大提高了性能。
+  * transferTo和transferFrom并不保证一定能使用零拷贝。实际上是否能使用零拷贝与操作系统相关，如果操作系统提供sendfile这样的零拷贝系统调用，则这两个方法会通过这样的系统调用充分利用零拷贝的优势，否则并不能通过这两个方法本身实现零拷贝。
+* Batching of Messages：批量量处理。合并小的请求，然后以流的方式进行交互，直顶网络上限。
+  * 即使是顺序读写，过于频繁的大量小IO操作一样会造成磁盘的瓶颈，此时又变成了随机读写。Kafka的策略是把消息集合在一起，批量发送，尽可能减少对磁盘的访问。
+  * 结合磁盘顺序写入，批量无疑是非常有必要（如果用的时候每发送一条消息都调用future.get等待，性能至少下降2个数量级）。写入的时候放到RecordAccumulator进行聚合，批量压缩，还有批量刷盘等...
+* Pull 拉模式：使用拉模式进行消息的获取消费，与消费端处理能力相符。
